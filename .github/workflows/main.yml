@@ -1,0 +1,25 @@
+yamlname: Renpho Garmin Sync
+
+on:
+  schedule:
+    # Startet jeden Tag automatisch um 06:30 Uhr und 18:30 Uhr UTC
+    - cron: '30 6,18 * * *'
+  workflow_dispatch: # Erlaubt es dir, den Sync jederzeit manuell zu starten
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      - name: Install RGS Tool
+        run: dotnet tool install --global RenphoGarminSync-CLI
+
+      - name: Run Sync
+        run: rgs sync --renpho-email "${{ secrets.RENPHO_EMAIL }}" --renpho-password "${{ secrets.RENPHO_PASSWORD }}" --garmin-email "${{ secrets.GARMIN_EMAIL }}" --garmin-password "${{ secrets.GARMIN_PASSWORD }}" --user-index ${{ secrets.RENPHO_USER_INDEX }}
