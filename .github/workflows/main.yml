@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '30 6,18 * * *'
   workflow_dispatch:
+    inputs:
+      mfa_code:
+        description: 'Garmin E-Mail-Code (nur beim ersten Mal nötig)'
+        required: false
+        default: ''
 
 jobs:
   sync:
@@ -17,6 +22,14 @@ jobs:
         with:
           dotnet-version: '8.0'
 
+      - name: Restore Garmin Session
+        uses: actions/cache@v4
+        with:
+          path: ~/.garmin
+          key: garmin-session-${{ github.run_id }}
+          restore-keys: |
+            garmin-session-
+
       - name: Install RGS Tool
         run: dotnet tool install --global RenphoGarminSync-CLI
 
@@ -27,4 +40,17 @@ jobs:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
           RENPHO_USER_INDEX: ${{ secrets.RENPHO_USER_INDEX }}
-        run: rgs sync --renpho-email "$RENPHO_EMAIL" --renpho-password "$RENPHO_PASSWORD" --garmin-email "$GARMIN_EMAIL" --garmin-password "$GARMIN_PASSWORD" --user-index "$RENPHO_USER_INDEX" --garmin-priority-region "DE"
+          MFA_CODE: ${{ github.event.inputs.mfa_code }}
+        run: |
+          if [ -n "$MFA_CODE" ]; then
+            rgs sync --renpho-email "$RENPHO_EMAIL" --renpho-password "$RENPHO_PASSWORD" --garmin-email "$GARMIN_EMAIL" --garmin-password "$GARMIN_PASSWORD" --user-index "$RENPHO_USER_INDEX" --garmin-priority-region "DE" --mfaCode "$MFA_CODE"
+          else
+            rgs sync --renpho-email "$RENPHO_EMAIL" --renpho-password "$RENPHO_PASSWORD" --garmin-email "$GARMIN_EMAIL" --garmin-password "$GARMIN_PASSWORD" --user-index "$RENPHO_USER_INDEX" --garmin-priority-region "DE"
+          fi
+
+      - name: Save Garmin Session
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.garmin
+          key: garmin-session-${{ github.run_id }}
