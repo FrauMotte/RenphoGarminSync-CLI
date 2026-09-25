@@ -1,4 +1,6 @@
-yamlname: Renpho Garmin Sync
+yaml
+
+name: Renpho Garmin Sync
 
 on:
   schedule:
