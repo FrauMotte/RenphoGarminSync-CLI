@@ -2,9 +2,8 @@ name: Renpho Garmin Sync
 
 on:
   schedule:
-    # Startet jeden Tag automatisch um 06:30 Uhr und 18:30 Uhr UTC
     - cron: '30 6,18 * * *'
-  workflow_dispatch: # Erlaubt es dir, den Sync jederzeit manuell zu starten
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -22,4 +21,10 @@ jobs:
         run: dotnet tool install --global RenphoGarminSync-CLI
 
       - name: Run Sync
-        run: rgs sync --renpho-email "${{ secrets.RENPHO_EMAIL }}" --renpho-password "${{ secrets.RENPHO_PASSWORD }}" --garmin-email "${{ secrets.GARMIN_EMAIL }}" --garmin-password "${{ secrets.GARMIN_PASSWORD }}" --user-index ${{ secrets.RENPHO_USER_INDEX }}
+        env:
+          RENPHO_EMAIL: ${{ secrets.RENPHO_EMAIL }}
+          RENPHO_PASSWORD: ${{ secrets.RENPHO_PASSWORD }}
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          RENPHO_USER_INDEX: ${{ secrets.RENPHO_USER_INDEX }}
+        run: rgs sync --renpho-email "$RENPHO_EMAIL" --renpho-password "$RENPHO_PASSWORD" --garmin-email "$GARMIN_EMAIL" --garmin-password "$GARMIN_PASSWORD" --user-index "$RENPHO_USER_INDEX" --garmin-priority-region "DE"
