@@ -1,56 +1,35 @@
-name: Renpho Garmin Sync
+name: Garmin 2FA Aktivierung
 
 on:
-  schedule:
-    - cron: '30 6,18 * * *'
   workflow_dispatch:
     inputs:
       mfa_code:
-        description: 'Garmin E-Mail-Code (nur beim ersten Mal nötig)'
+        description: 'Schritt 2: Hier den E-Mail-Code eintragen'
         required: false
         default: ''
 
 jobs:
-  sync:
+  auth:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
-      - name: Restore Garmin Session
-        uses: actions/cache@v4
-        with:
-          path: ~/.garmin
-          key: garmin-session-${{ github.run_id }}
-          restore-keys: |
-            garmin-session-
-
       - name: Install RGS Tool
         run: dotnet tool install --global RenphoGarminSync-CLI
 
-      - name: Run Sync
+      - name: Starte Autorisierung oder Sende Code
         env:
-          RENPHO_EMAIL: ${{ secrets.RENPHO_EMAIL }}
-          RENPHO_PASSWORD: ${{ secrets.RENPHO_PASSWORD }}
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
-          RENPHO_USER_INDEX: ${{ secrets.RENPHO_USER_INDEX }}
           MFA_CODE: ${{ github.event.inputs.mfa_code }}
         run: |
-          if [ -n "$MFA_CODE" ]; then
-            rgs sync --renpho-email "$RENPHO_EMAIL" --renpho-password "$RENPHO_PASSWORD" --garmin-email "$GARMIN_EMAIL" --garmin-password "$GARMIN_PASSWORD" --user-index "$RENPHO_USER_INDEX" --garmin-priority-region "DE" --mfaCode "$MFA_CODE"
+          if [ -empty "$MFA_CODE" ]; then
+            echo "Fordere 2FA Code von Garmin an..."
+            rgs auth garmin --u "$GARMIN_EMAIL" --pw "$GARMIN_PASSWORD" || true
           else
-            rgs sync --renpho-email "$RENPHO_EMAIL" --renpho-password "$RENPHO_PASSWORD" --garmin-email "$GARMIN_EMAIL" --garmin-password "$GARMIN_PASSWORD" --user-index "$RENPHO_USER_INDEX" --garmin-priority-region "DE"
+            echo "Sende 2FA Code an Garmin..."
+            rgs auth garmin --u "$GARMIN_EMAIL" --mfa "$MFA_CODE"
           fi
-
-      - name: Save Garmin Session
-        if: success()
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.garmin
-          key: garmin-session-${{ github.run_id }}
