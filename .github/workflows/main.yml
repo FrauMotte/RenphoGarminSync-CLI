@@ -1,35 +1,45 @@
-name: Garmin 2FA Aktivierung
+name: Renpho Garmin Sync
 
 on:
+  schedule:
+    - cron: '30 6,18 * * *'
   workflow_dispatch:
-    inputs:
-      mfa_code:
-        description: 'Schritt 2: Hier den E-Mail-Code eintragen'
-        required: false
-        default: ''
 
 jobs:
-  auth:
+  sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
+      - name: Restore Garmin Session
+        uses: actions/cache@v4
+        with:
+          path: ~/.garmin
+          key: garmin-session-${{ github.run_id }}
+          restore-keys: |
+            garmin-session-
+
       - name: Install RGS Tool
         run: dotnet tool install --global RenphoGarminSync-CLI
 
-      - name: Starte Autorisierung oder Sende Code
+      - name: Run Sync
         env:
+          RENPHO_EMAIL: ${{ secrets.RENPHO_EMAIL }}
+          RENPHO_PASSWORD: ${{ secrets.RENPHO_PASSWORD }}
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
-          MFA_CODE: ${{ github.event.inputs.mfa_code }}
-        run: |
-          if [ -empty "$MFA_CODE" ]; then
-            echo "Fordere 2FA Code von Garmin an..."
-            rgs auth garmin --u "$GARMIN_EMAIL" --pw "$GARMIN_PASSWORD" || true
-          else
-            echo "Sende 2FA Code an Garmin..."
-            rgs auth garmin --u "$GARMIN_EMAIL" --mfa "$MFA_CODE"
-          fi
+          RENPHO_USER_INDEX: ${{ secrets.RENPHO_USER_INDEX }}
+        run: rgs sync --renpho-email "$RENPHO_EMAIL" --renpho-password "$RENPHO_PASSWORD" --garmin-email "$GARMIN_EMAIL" --garmin-password "$GARMIN_PASSWORD" --user-index "$RENPHO_USER_INDEX" --garmin-priority-region "DE"
+
+      - name: Save Garmin Session
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.garmin
+          key: garmin-session-${{ github.run_id }}
